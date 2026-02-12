@@ -1165,7 +1165,71 @@ else:  # Help & Info
 
         train_path = "train.csv"
         if not os.path.exists(train_path):
-            st.warning("train.csv not found in the project directory.")
+            st.info("📊 **Training Data Overview**")
+            st.markdown("""
+            The training dataset (`train.csv`) is not included in this deployment to reduce repository size.
+            
+            **Pre-computed analytics are available below**, computed on the full training dataset (~1.4M rows).
+            
+            To access the raw training data:
+            - Download from [Kaggle - Flood Prediction Train and Test Dataset](https://www.kaggle.com/datasets/henibejar/flood-prediction-train-and-test-dataset)
+            - Place `train.csv` in the project root directory
+            - Restart the app
+            """)
+            
+            st.markdown("---")
+            st.subheader("📈 Pre-computed Feature-Target Correlations")
+            
+            # Show pre-computed correlation if available
+            corr_file = "train_correlation_matrix.pkl"
+            if os.path.exists(corr_file):
+                try:
+                    corr_matrix = joblib.load(corr_file)
+                    if ENHANCEMENTS_AVAILABLE:
+                        corr_df = compute_feature_target_correlation(corr_matrix)
+                        st.dataframe(corr_df.head(20), use_container_width=True)
+                        
+                        fig = px.bar(corr_df.head(10), x='Feature', y='Correlation',
+                                   color='Correlation', color_continuous_scale='RdBu_r',
+                                   title="Top 10 Features by Correlation with FloodProbability")
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.info("Enhanced analysis unavailable")
+                except Exception as e:
+                    st.warning(f"Could not load pre-computed correlation: {e}")
+            else:
+                st.warning("Pre-computed correlation file not found.")
+            
+            st.markdown("---")
+            st.subheader("🎯 Pre-computed Feature Sensitivity")
+            
+            # Show pre-computed sensitivity if available
+            sens_file = "train_sensitivity_approach4.pkl"
+            if os.path.exists(sens_file):
+                try:
+                    sensitivities = joblib.load(sens_file)
+                    sens_plot_df = pd.DataFrame({
+                        'Feature': list(sensitivities.keys()),
+                        'Impact': list(sensitivities.values())
+                    }).sort_values('Impact', ascending=False).head(10)
+                    
+                    fig = px.bar(sens_plot_df, x='Feature', y='Impact',
+                               color='Impact', color_continuous_scale='Reds',
+                               title="Top 10 Features by Sensitivity (Computed on 1.4M rows)")
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    st.dataframe(sens_plot_df, use_container_width=True, hide_index=True)
+                except Exception as e:
+                    st.warning(f"Could not load pre-computed sensitivity: {e}")
+            else:
+                st.warning("Pre-computed sensitivity file not found.")
+            
+            st.markdown("---")
+            st.markdown("""
+            **Note:** All pre-computed analytics were generated from the complete training dataset.
+            For interactive analysis with your own data, use the **Advanced Analysis** mode.
+            """)
+            
         else:
             # Initialize session state for train data
             if 'train_dataset_loaded' not in st.session_state:
@@ -1271,213 +1335,213 @@ else:  # Help & Info
             fig.update_layout(height=800)
             st.plotly_chart(fig, width='stretch')
 
-        st.markdown("### Feature Sensitivity (Train Data - All 1.4M Rows)")
-        
-        # Try to load pre-computed sensitivity
-        sens_results, loaded = load_sensitivity_results()
-        
-        if loaded and sens_results is not None:
-            # Display pre-computed results (instant)
+            st.markdown("### Feature Sensitivity (Train Data - All 1.4M Rows)")
             
-            if isinstance(sens_results, dict):
-                # If loaded from PKL (dict format)
-                sens_plot_df = pd.DataFrame({
-                    'Feature': list(sens_results.keys()),
-                    'Impact': list(sens_results.values())
-                }).sort_values('Impact', ascending=False).head(10)
-            else:
-                # If loaded from CSV (DataFrame format)
-                sens_plot_df = sens_results.sort_values('Impact', ascending=False).head(10)
+            # Try to load pre-computed sensitivity
+            sens_results, loaded = load_sensitivity_results()
             
-            fig = px.bar(sens_plot_df, x='Impact', y='Feature', orientation='h',
-                         color='Impact', color_continuous_scale='Reds',
-                         title="Top 10 Features by Sensitivity (Approach 4, 1.4M rows)")
-            fig.update_layout(height=500, showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Display table
-            st.dataframe(sens_plot_df.reset_index(drop=True), use_container_width=True)
-        else:
-            st.warning("⚠️ Pre-computed sensitivity files not found. Computing on sample data...")
-            
-            # Fallback: compute on sample if files not available
-            base_features = [c for c in train_df.columns 
-                           if c not in ['id', 'FloodProbability']]
-            
-            sens_rows = st.number_input(
-                "Max rows for sensitivity analysis",
-                min_value=200,
-                max_value=min(5000, len(train_df)),
-                value=min(1000, len(train_df)),
-                step=100,
-                key="train_sens_rows"
-            )
-
-            sens_df = train_df[base_features].sample(
-                n=int(sens_rows),
-                random_state=42
-            )
-
-            for col in sens_df.columns:
-                median_val = sens_df[col].median()
-                if pd.isna(median_val):
-                    sens_df[col] = sens_df[col].fillna(0.5)
+            if loaded and sens_results is not None:
+                # Display pre-computed results (instant)
+                
+                if isinstance(sens_results, dict):
+                    # If loaded from PKL (dict format)
+                    sens_plot_df = pd.DataFrame({
+                        'Feature': list(sens_results.keys()),
+                        'Impact': list(sens_results.values())
+                    }).sort_values('Impact', ascending=False).head(10)
                 else:
-                    sens_df[col] = sens_df[col].fillna(median_val)
+                    # If loaded from CSV (DataFrame format)
+                    sens_plot_df = sens_results.sort_values('Impact', ascending=False).head(10)
+                
+                fig = px.bar(sens_plot_df, x='Impact', y='Feature', orientation='h',
+                             color='Impact', color_continuous_scale='Reds',
+                             title="Top 10 Features by Sensitivity (Approach 4, 1.4M rows)")
+                fig.update_layout(height=500, showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Display table
+                st.dataframe(sens_plot_df.reset_index(drop=True), use_container_width=True)
+            else:
+                st.warning("⚠️ Pre-computed sensitivity files not found. Computing on sample data...")
+                
+                # Fallback: compute on sample if files not available
+                base_features = [c for c in train_df.columns 
+                               if c not in ['id', 'FloodProbability']]
+                
+                sens_rows = st.number_input(
+                    "Max rows for sensitivity analysis",
+                    min_value=200,
+                    max_value=min(5000, len(train_df)),
+                    value=min(1000, len(train_df)),
+                    step=100,
+                    key="train_sens_rows"
+                )
 
-            sens_eng = advanced_features(sens_df)
-            exclude = ['id', 'FloodProbability']
-            feature_cols = [c for c in sens_eng.columns if c not in exclude]
+                sens_df = train_df[base_features].sample(
+                    n=int(sens_rows),
+                    random_state=42
+                )
 
-            baseline_array = sens_eng[feature_cols].values
-            scaler = models_dict['scaler']
-            baseline_scaled = scaler.transform(baseline_array)
-            baseline_pred = predict_with_approach(4, baseline_scaled, models_dict)
+                for col in sens_df.columns:
+                    median_val = sens_df[col].median()
+                    if pd.isna(median_val):
+                        sens_df[col] = sens_df[col].fillna(0.5)
+                    else:
+                        sens_df[col] = sens_df[col].fillna(median_val)
 
-            sensitivities = {}
-            for feature in base_features:
-                perturbed_df = sens_df.copy()
-                perturbed_df[feature] = np.clip(perturbed_df[feature] + 0.1, 0.0, 1.0)
+                sens_eng = advanced_features(sens_df)
+                exclude = ['id', 'FloodProbability']
+                feature_cols = [c for c in sens_eng.columns if c not in exclude]
 
-                perturbed_eng = advanced_features(perturbed_df)
-                perturbed_array = perturbed_eng[feature_cols].values
-                perturbed_scaled = scaler.transform(perturbed_array)
-                perturbed_pred = predict_with_approach(4, perturbed_scaled, models_dict)
+                baseline_array = sens_eng[feature_cols].values
+                scaler = models_dict['scaler']
+                baseline_scaled = scaler.transform(baseline_array)
+                baseline_pred = predict_with_approach(4, baseline_scaled, models_dict)
 
-                sensitivities[feature] = float(np.mean(np.abs(perturbed_pred - baseline_pred)))
+                sensitivities = {}
+                for feature in base_features:
+                    perturbed_df = sens_df.copy()
+                    perturbed_df[feature] = np.clip(perturbed_df[feature] + 0.1, 0.0, 1.0)
 
-            sens_plot_df = pd.DataFrame({
-                'Feature': list(sensitivities.keys()),
-                'Impact': list(sensitivities.values())
-            }).sort_values('Impact', ascending=False).head(10)
+                    perturbed_eng = advanced_features(perturbed_df)
+                    perturbed_array = perturbed_eng[feature_cols].values
+                    perturbed_scaled = scaler.transform(perturbed_array)
+                    perturbed_pred = predict_with_approach(4, perturbed_scaled, models_dict)
 
-            fig = px.bar(sens_plot_df, x='Feature', y='Impact',
-                         color='Impact', color_continuous_scale='Reds',
-                         title="Top 10 Features by Sensitivity (Train Data)")
-            st.plotly_chart(fig, use_container_width=True)
+                    sensitivities[feature] = float(np.mean(np.abs(perturbed_pred - baseline_pred)))
 
-        st.markdown("---")
-        st.subheader("Target Variable Distribution")
-        
-        # FloodProbability distribution
-        flood_prob = train_df['FloodProbability'].dropna()
-        mean_flood = flood_prob.mean()
-        
-        # Create histogram with KDE overlay
-        fig_dist = go.Figure()
-        
-        # Histogram bars
-        fig_dist.add_trace(go.Histogram(
-            x=flood_prob,
-            nbinsx=30,
-            name='Frequency',
-            marker_color='rgba(255, 200, 0, 0.7)',
-            showlegend=True
-        ))
-        
-        # KDE curve overlay
-        from scipy.stats import gaussian_kde
-        kde = gaussian_kde(flood_prob)
-        x_range = np.linspace(flood_prob.min(), flood_prob.max(), 100)
-        kde_values = kde(x_range)
-        # Scale KDE to match histogram height
-        kde_values = kde_values * len(flood_prob) * (flood_prob.max() - flood_prob.min()) / 30
-        
-        fig_dist.add_trace(go.Scatter(
-            x=x_range,
-            y=kde_values,
-            mode='lines',
-            name='KDE',
-            line=dict(color='rgb(128, 0, 128)', width=3),
-            showlegend=True
-        ))
-        
-        # Add mean line
-        fig_dist.add_vline(
-            x=mean_flood,
-            line_dash="dash",
-            line_color="red",
-            annotation_text=f"Mean = {mean_flood:.3f}",
-            annotation_position="top right"
-        )
-        
-        fig_dist.update_layout(
-            title="FloodProbability Distribution (Train Data)",
-            xaxis_title="FloodProbability",
-            yaxis_title="Density",
-            hovermode='x unified',
-            height=500,
-            barmode='overlay'
-        )
-        
-        st.plotly_chart(fig_dist, use_container_width=True)
-        
-        st.markdown(f"""
-        **Distribution Statistics:**
-        - Mean: {mean_flood:.4f}
-        - Std Dev: {flood_prob.std():.4f}
-        - Min: {flood_prob.min():.4f}
-        - Max: {flood_prob.max():.4f}
-        - Median: {flood_prob.median():.4f}
-        """)
+                sens_plot_df = pd.DataFrame({
+                    'Feature': list(sensitivities.keys()),
+                    'Impact': list(sensitivities.values())
+                }).sort_values('Impact', ascending=False).head(10)
 
-        st.markdown("---")
-        st.subheader("📊 Training Data Stratification")
-        st.markdown("Distribution of target variable across different probability ranges:")
-        
-        if ENHANCEMENTS_AVAILABLE:
-            # Analyze class distribution
-            stratification_df = analyze_class_distribution(train_df, target_col='FloodProbability', n_bins=10)
-            if stratification_df is not None:
-                st.dataframe(stratification_df, use_container_width=True)
+                fig = px.bar(sens_plot_df, x='Feature', y='Impact',
+                             color='Impact', color_continuous_scale='Reds',
+                             title="Top 10 Features by Sensitivity (Train Data)")
+                st.plotly_chart(fig, use_container_width=True)
+
+            st.markdown("---")
+            st.subheader("Target Variable Distribution")
+            
+            # FloodProbability distribution
+            flood_prob = train_df['FloodProbability'].dropna()
+            mean_flood = flood_prob.mean()
+            
+            # Create histogram with KDE overlay
+            fig_dist = go.Figure()
+            
+            # Histogram bars
+            fig_dist.add_trace(go.Histogram(
+                x=flood_prob,
+                nbinsx=30,
+                name='Frequency',
+                marker_color='rgba(255, 200, 0, 0.7)',
+                showlegend=True
+            ))
+            
+            # KDE curve overlay
+            from scipy.stats import gaussian_kde
+            kde = gaussian_kde(flood_prob)
+            x_range = np.linspace(flood_prob.min(), flood_prob.max(), 100)
+            kde_values = kde(x_range)
+            # Scale KDE to match histogram height
+            kde_values = kde_values * len(flood_prob) * (flood_prob.max() - flood_prob.min()) / 30
+            
+            fig_dist.add_trace(go.Scatter(
+                x=x_range,
+                y=kde_values,
+                mode='lines',
+                name='KDE',
+                line=dict(color='rgb(128, 0, 128)', width=3),
+                showlegend=True
+            ))
+            
+            # Add mean line
+            fig_dist.add_vline(
+                x=mean_flood,
+                line_dash="dash",
+                line_color="red",
+                annotation_text=f"Mean = {mean_flood:.3f}",
+                annotation_position="top right"
+            )
+            
+            fig_dist.update_layout(
+                title="FloodProbability Distribution (Train Data)",
+                xaxis_title="FloodProbability",
+                yaxis_title="Density",
+                hovermode='x unified',
+                height=500,
+                barmode='overlay'
+            )
+            
+            st.plotly_chart(fig_dist, use_container_width=True)
+            
+            st.markdown(f"""
+            **Distribution Statistics:**
+            - Mean: {mean_flood:.4f}
+            - Std Dev: {flood_prob.std():.4f}
+            - Min: {flood_prob.min():.4f}
+            - Max: {flood_prob.max():.4f}
+            - Median: {flood_prob.median():.4f}
+            """)
+
+            st.markdown("---")
+            st.subheader("📊 Training Data Stratification")
+            st.markdown("Distribution of target variable across different probability ranges:")
+            
+            if ENHANCEMENTS_AVAILABLE:
+                # Analyze class distribution
+                stratification_df = analyze_class_distribution(train_df, target_col='FloodProbability', n_bins=10)
+                if stratification_df is not None:
+                    st.dataframe(stratification_df, use_container_width=True)
+                    
+                    # Visualization
+                    fig_strat = px.bar(
+                        stratification_df,
+                        x='Probability Range',
+                        y='Percentage',
+                        title='Target Variable Distribution by Probability Range',
+                        labels={'Percentage': 'Percentage of Samples (%)'},
+                        color='Percentage',
+                        color_continuous_scale='Blues'
+                    )
+                    st.plotly_chart(fig_strat, use_container_width=True)
+            else:
+                st.info("Enhanced analysis unavailable")
+
+            st.markdown("---")
+            st.subheader("🔗 Feature-Target Correlation Analysis")
+            st.markdown("Correlation between each base feature and FloodProbability:")
+            
+            if ENHANCEMENTS_AVAILABLE:
+                # Compute feature-target correlations
+                base_features = [
+                    'MonsoonIntensity', 'TopographyDrainage', 'RiverManagement', 'Deforestation',
+                    'Urbanization', 'ClimateChange', 'DamsQuality', 'Siltation', 'AgriculturalPractices',
+                    'Encroachments', 'IneffectiveDisasterPreparedness', 'DrainageSystems',
+                    'CoastalVulnerability', 'Landslides', 'Watersheds', 'DeterioratingInfrastructure',
+                    'PopulationScore', 'WetlandLoss', 'InadequatePlanning', 'PoliticalFactors'
+                ]
+                
+                corr_df = compute_feature_target_correlation(train_df, base_features, target_col='FloodProbability')
+                
+                # Display as table
+                st.dataframe(corr_df.head(10), use_container_width=True)
                 
                 # Visualization
-                fig_strat = px.bar(
-                    stratification_df,
-                    x='Probability Range',
-                    y='Percentage',
-                    title='Target Variable Distribution by Probability Range',
-                    labels={'Percentage': 'Percentage of Samples (%)'},
-                    color='Percentage',
-                    color_continuous_scale='Blues'
+                fig_corr = px.bar(
+                    corr_df.head(15),
+                    x='Correlation',
+                    y='Feature',
+                    orientation='h',
+                    title='Top 15 Features by Correlation with FloodProbability',
+                    color='Correlation',
+                    color_continuous_scale='RdBu',
+                    labels={'Correlation': 'Pearson Correlation Coefficient'}
                 )
-                st.plotly_chart(fig_strat, use_container_width=True)
-        else:
-            st.info("Enhanced analysis unavailable")
-
-        st.markdown("---")
-        st.subheader("🔗 Feature-Target Correlation Analysis")
-        st.markdown("Correlation between each base feature and FloodProbability:")
-        
-        if ENHANCEMENTS_AVAILABLE:
-            # Compute feature-target correlations
-            base_features = [
-                'MonsoonIntensity', 'TopographyDrainage', 'RiverManagement', 'Deforestation',
-                'Urbanization', 'ClimateChange', 'DamsQuality', 'Siltation', 'AgriculturalPractices',
-                'Encroachments', 'IneffectiveDisasterPreparedness', 'DrainageSystems',
-                'CoastalVulnerability', 'Landslides', 'Watersheds', 'DeterioratingInfrastructure',
-                'PopulationScore', 'WetlandLoss', 'InadequatePlanning', 'PoliticalFactors'
-            ]
-            
-            corr_df = compute_feature_target_correlation(train_df, base_features, target_col='FloodProbability')
-            
-            # Display as table
-            st.dataframe(corr_df.head(10), use_container_width=True)
-            
-            # Visualization
-            fig_corr = px.bar(
-                corr_df.head(15),
-                x='Correlation',
-                y='Feature',
-                orientation='h',
-                title='Top 15 Features by Correlation with FloodProbability',
-                color='Correlation',
-                color_continuous_scale='RdBu',
-                labels={'Correlation': 'Pearson Correlation Coefficient'}
-            )
-            st.plotly_chart(fig_corr, use_container_width=True)
-        else:
-            st.info("Enhanced analysis unavailable")
+                st.plotly_chart(fig_corr, use_container_width=True)
+            else:
+                st.info("Enhanced analysis unavailable")
 
         st.markdown("---")
         st.subheader("Project Pipeline Summary")
