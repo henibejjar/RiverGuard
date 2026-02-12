@@ -2,6 +2,8 @@
 
 Flood probability prediction system with a Streamlit web app and four ML approaches. Runs single predictions, advanced analysis, and large batch scoring.
 
+🌐 **[Live Demo](https://heni-bejjar-riverguard.streamlit.app/)** | 📊 **[Dataset on Kaggle](https://www.kaggle.com/datasets/henibejar/flood-prediction-train-and-test-dataset)**
+
 ## Quick Start
 
 ### Option 1: Use Pre-trained Models (Fastest)
