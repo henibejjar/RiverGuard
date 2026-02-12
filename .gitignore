@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environment
+venv/
+.venv/
+
+# Streamlit
+.streamlit/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local data files (not tracked)
+train.csv
+test.csv
+train_correlation_matrix.csv
+train_sensitivity_approach4.csv
+
+# CatBoost logs
+catboost_info/
+
+# Temporary files
+*.log
+*.tmp
