@@ -1,5 +1,7 @@
 # RiverGuard Usage Guide
 
+🌐 **[Try Live Demo](https://heni-bejjar-riverguard.streamlit.app/)**
+
 ## Quick Start (Using Pre-trained Models)
 
 **All trained models are included** in this repository. No dataset download or training required!
